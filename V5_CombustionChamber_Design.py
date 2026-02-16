@@ -14,7 +14,6 @@ class MicroJetCombustor:
             'discharge_coeff_hole': 0.60, # sharo edge hol asmp.
             'max_LD_ratio': 1.65          # L?D for shaft stability
         }
-        
         # Fuel (Jet-A / Kerosene)
         self.FUEL = {
             "LHV": 43.0e6,
@@ -22,7 +21,6 @@ class MicroJetCombustor:
             "RHO_LIQ": 800.0,
             "T_BOIL": 450.0      # K (aprox vap. T)
         }
-
     def _get_cp(self, T_kelvin):
         T = max(200, min(T_kelvin, 2000))
         cp = 950 + (0.21 * T) 
@@ -168,32 +166,32 @@ class MicroJetCombustor:
 
 def print_report(res, original_inputs):
     print("\n")
-    print(f"REVERSE-FLOW COMBUSTOR MODEL (Rev 6 - Variable Cp)")
+    print(f"Reverse Flow Combustor (Rev 7 - Variable Cp)")
     print("\n")
-    print(f"\n[1] THERMODYNAMICS")
+    print(f"\n[1] Thermo")
     print(f"   Inlet Temp (T2):  {res['T2_K']:.0f} K")
     print(f"   Target TIT:       {original_inputs['target_tit_k']} K")
     print(f"   Est. Pilot Temp:  {res['T_primary_zone_est']:.0f} K (Rich Zone)")
     print(f"   Cp (Avg Used):    {res['cp_used']:.1f} J/kgK")
-    print(f"\n[2] FLOW BUDGET")
+    print(f"\n[2] Flow Budget")
     print(f"   Total Air:        {res['mdot_air']:.3f} kg/s")
     print(f"   Total Fuel:       {res['mdot_fuel']*1000:.1f} g/s")
     print(f"   Air Split:        Pri: {res['split_primary']/res['mdot_air']:.1%} | Sec: {res['split_secondary']/res['mdot_air']:.1%} | Dil: {res['split_dilution']/res['mdot_air']:.1%}")
     if res['split_dilution'] <= 0:
-        print(f"   [!] CRITICAL: Zero dilution air. Engine runs too hot for target TIT.")
-    print(f"\n[3] GEOMETRY (Based on {original_inputs['casing_od_inch']}\" OD)")
+        print(f"   *** Zero dilution air. Engine runs too hot for target TIT.")
+    print(f"\n[3] Geometry (Based on {original_inputs['casing_od_inch']}\" OD)")
     print(f"   Liner OD:         {res['liner_od_mm']:.1f} mm")
     print(f"   Liner ID:         {res['liner_id_mm']:.1f} mm")
     print(f"   Annulus Gap:      {res['annulus_gap_mm']:.1f} mm")
     print(f"   Length:           {res['chamber_length_mm']:.1f} mm")
-    print(f"\n[4] INJECTION & MIXING")
+    print(f"\n[4] Mixing + Injection")
     print(f"   Vaporizers:       {res['vap_n']} tubes")
     print(f"   Tube Dims:        {res['vap_od_mm']:.1f}mm OD / {res['vap_id_mm']:.1f}mm ID")
     print(f"   Vapor Velocity:   {res['vap_exit_velocity']:.1f} m/s")
     print(f"NOTE: Although we want this to be 50-80m/s to prevent flashback, this doesn't  account\n\
 for crimping the exits of the fuel tubes (essestially making small nozzles that will accelerate\n\
 the fuel to ~2.5x its velocity). For ref: {res['vap_exit_velocity']/.4:.1f} m/s")
-    print(f"\n[5] DRILL SCHEDULE")
+    print(f"\n[5] Hole Sizing")
     print(f"   Primary:          {res['holes_pri_qty']} x {res['holes_pri_mm']:.1f} mm")
     print(f"   Secondary:        {res['holes_sec_qty']} x {res['holes_sec_mm']:.1f} mm")
     print(f"   Dilution:         {res['holes_dil_qty']} x {res['holes_dil_mm']:.1f} mm")
@@ -203,10 +201,10 @@ the fuel to ~2.5x its velocity). For ref: {res['vap_exit_velocity']/.4:.1f} m/s"
 user_inputs = {
     'casing_od_inch': 6.0,
     'wall_thickness_mm': 1.5,
-    'pressure_ratio': 2.8,
-    'compressor_efficiency': 0.86,
-    'mass_flow_air_kg_s': None, # set none for autoscale
-    'target_tit_k': 1100.0} # max temp for steel (accounting for F.S.)
+    'pressure_ratio': 1.5,
+    'compressor_efficiency': 0.94,
+    'mass_flow_air_kg_s': .487, # set none for autoscale
+    'target_tit_k': 900.0} # max temp for steel (accounting for F.S.)
 kj66_inputs = {
     'casing_od_inch': 4.33, #110mm
     'wall_thickness_mm': 0.5,
@@ -215,7 +213,7 @@ kj66_inputs = {
     'mass_flow_air_kg_s': 0.23, #.22-.24
     'target_tit_k': 1123.0 #K
 }
-user_inputs=kj66_inputs
+#user_inputs=kj66_inputs
 #def compare_kj66()
 
 if __name__ == "__main__":

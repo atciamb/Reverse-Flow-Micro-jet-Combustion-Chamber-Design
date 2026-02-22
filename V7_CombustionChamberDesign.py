@@ -821,7 +821,109 @@ class MicroJetCombustor:
         self.res['mixing_index']  = MI
         self.res['mix_eff_outer'] = eff_out
         self.res['mix_eff_inner'] = eff_in
-
+    def get_cad_geometry(self):
+        """
+        Returns ONE clean dictionary with ALL geometry for CAD import.
+        Use like:
+            cad = model.get_cad_geometry()
+            json.dump(cad, open('combustor_cad.json', 'w'), indent=2)
+        All linear dimensions in mm. Counts and fractions are unitless.
+        """
+        return {
+            "metadata": {
+                "units": "mm",
+                "description": "Reverse-flow annular micro-jet combustor — KJ66 style",
+                "generated_by": "V7_CombustionChamberDesign.py"
+            },
+            "overall": {
+                "chamber_length": self.res['chamber_length_mm'],
+                "mean_comb_dia":  self.res['D_mean_comb_mm']
+            },
+            "casing": {
+                "od": self.res['casing_od_mm'],
+                "id": self.res['casing_id_mm'],
+                "wall_thickness": self.inputs['wall_thickness_mm']
+            },
+            "shaft_tunnel": {
+                "od": self.res['shaft_tunnel_od_mm'],
+                "id": self.res['shaft_tunnel_id_mm']
+            },
+            "outer_liner": {
+                "od": self.res['outer_liner_od_mm'],
+                "id": self.res['outer_liner_id_mm'],
+                "length": self.res['chamber_length_mm'],
+                "annulus_gap": self.res['outer_annulus_gap_mm']
+            },
+            "inner_liner": {
+                "od": self.res['inner_liner_od_mm'],
+                "id": self.res['inner_liner_id_mm'],
+                "length": self.res['chamber_length_mm'],
+                "annulus_gap": self.res['inner_annulus_gap_mm']
+            },
+            "combustion_annulus": {
+                "radial_height": self.res['combustion_gap_mm'],
+                "mean_diameter": self.res['D_mean_comb_mm'],
+                "cross_section_area_mm2": self.res['combustion_annulus_A'] * 1e6
+            },
+            "vaporizers": {
+                "count": self.res['vap_n'],
+                "raw_count": self.res['vap_n_raw'],
+                "pitch_actual": self.res['vap_pitch_actual_mm'],
+                "tube_od": self.res['vap_od_mm'],
+                "tube_bore_id": self.res['vap_id_mm'],
+                "exit_nozzle_id": self.res['vap_exit_nozzle_mm'],
+                "scoop_inlet_dia": self.res['vap_scoop_dia_mm'],
+                "bend_radius": self.res['vap_bend_radius_mm'],
+                "per_tube": {
+                    "fuel_g_s": self.res['vap_m_fuel_per_tube'],
+                    "air_g_s": self.res['vap_m_air_per_tube']
+                }
+            },
+            "main_holes": {
+                "outer_fraction": self.res['hole_split_f_outer'],
+                "inner_fraction": self.res['hole_split_f_inner'],
+                "primary": {
+                    "outer_qty": self.res['pri_out_qty'],
+                    "outer_dia": self.res['pri_out_mm'],
+                    "inner_qty": self.res['pri_in_qty'],
+                    "inner_dia": self.res['pri_in_mm']
+                },
+                "secondary": {
+                    "outer_qty": self.res['sec_out_qty'],
+                    "outer_dia": self.res['sec_out_mm'],
+                    "inner_qty": self.res['sec_in_qty'],
+                    "inner_dia": self.res['sec_in_mm']
+                },
+                "dilution": {
+                    "outer_qty": self.res['dil_out_qty'],
+                    "outer_dia": self.res['dil_out_mm'],
+                    "inner_qty": self.res['dil_in_qty'],
+                    "inner_dia": self.res['dil_in_mm']
+                }
+            },
+            "film_cooling": {
+                "total_rows": self.res['film_n_rows'],
+                "rows_primary": self.res['film_n_rows_pri'],
+                "rows_secondary": self.res['film_n_rows_sec'],
+                "rows_dilution": self.res['film_n_rows_dil'],
+                "row_pitch": self.DESIGN_PARAMS['film_row_pitch_mm'],
+                "hole_dia": self.res['film_hole_dia_mm_actual'],
+                "outer_holes_per_row": self.res['film_holes_per_row_outer'],
+                "inner_holes_per_row": self.res['film_holes_per_row_inner'],
+                "total_holes": self.res['film_total_holes'],
+                "total_area_mm2": self.res['film_total_area_mm2']
+            },
+            "annulus_velocities": {
+                "outer_entry": self.res['v_outer_annulus'],
+                "outer_post_vap": self.res['v_outer_post_vap'],
+                "inner": self.res['v_inner_annulus']
+            },
+            "zone_lengths": {
+                "primary": self.res['L_primary_mm'],
+                "secondary": self.res['L_secondary_mm'],
+                "dilution": self.res['L_dilution_mm']
+            }
+        }
     def run(self):
         self.thermodynamics()
         self.mass_flow_and_fuel()
@@ -831,6 +933,8 @@ class MicroJetCombustor:
         self.hole_sizing()
         self.liner_structural()
         self.temperature_traverse_quality()
+        self.res['cad_geometry'] = self.get_cad_geometry()
+        return self.res
         return self.res
 
 def print_report(res, inputs):
@@ -851,6 +955,7 @@ def print_report(res, inputs):
             print(f"  ⚠  {msg}")
 
     print()
+
     print("=" * W)
     print("   REVERSE-FLOW ANNULAR MICRO-JET COMBUSTOR DESIGN TOOL")
     print("   KJ66-Style Architecture  |  Rev 10 — Physics Corrections")
@@ -1169,6 +1274,14 @@ def print_report(res, inputs):
     print("  • Igniter plug: outer liner, primary zone, midway between vaporizers")
     print("  • Thermal growth: add 0.1–0.3mm radial clearance on liner ODs")
     print("=" * W)
+    # [9] CAD Geometry Export
+    header("[9] CAD GEOMETRY EXPORT  (copy-paste into CAD)")
+    print("  → Use model.get_cad_geometry() in your script")
+    print("  → Or copy the JSON below for parametric import")
+    print()
+    import json
+    cad = res['cad_geometry']
+    print(json.dumps(cad, indent=2))
     print()
 
 

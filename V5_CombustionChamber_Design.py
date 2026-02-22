@@ -12,7 +12,7 @@ class MicroJetCombustor:
             'target_tube_liq_vel': 3.0,  # m/s (To prevent vapor lock/dribble)
             'target_pressure_drop': 0.04, # 4% dP across liner
             'discharge_coeff_hole': 0.60, # sharo edge hol asmp.
-            'max_LD_ratio': 1.65          # L?D for shaft stability
+            'max_LD_ratio': 1.65          # L/D for shaft stability
         }
         # Fuel (Jet-A / Kerosene)
         self.FUEL = {

@@ -195,6 +195,78 @@ the fuel to ~2.5x its velocity). For ref: {res['vap_exit_velocity']/.4:.1f} m/s"
     print(f"   Secondary:        {res['holes_sec_qty']} x {res['holes_sec_mm']:.1f} mm")
     print(f"   Dilution:         {res['holes_dil_qty']} x {res['holes_dil_mm']:.1f} mm")
     print()
+
+def generate_nx_journal(res):
+    """Generates an NX Open Python script with the calculated combustor values."""
+    
+    script_content = f"""# NX 2306
+# Auto-generated Journal for Combustor Update
+import math
+import NXOpen
+
+LinerID = "{res['liner_id_mm']:.3f}"
+LinerOD = "{res['liner_od_mm']:.3f}"
+Length = "{res['chamber_length_mm']:.3f}"
+NumPrim = "{res['holes_pri_qty']/4}"
+NumSec = "{res['holes_sec_qty']/2}"
+NumDil = "{res['holes_dil_qty']/2}"
+PrimDia = "{res['holes_pri_mm']:.3f}"
+SecDia = "{res['holes_sec_mm']:.3f}"
+DilDia = "{res['holes_dil_mm']:.3f}"
+AnnulusGap = "{res['annulus_gap_mm']:.3f}"
+
+def main():
+    theSession  = NXOpen.Session.GetSession()
+    workPart = theSession.Parts.Work
+    
+    markId1 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Visible, "Start")
+    unit1 = workPart.UnitCollection.FindObject("MilliMeter")
+    
+    # Update Liner ID
+    expression1 = workPart.Expressions.FindObject("LID")
+    workPart.Expressions.EditExpressionWithUnits(expression1, unit1, LinerID)
+    
+    # Update Liner OD
+    expression2 = workPart.Expressions.FindObject("LOD")
+    workPart.Expressions.EditExpressionWithUnits(expression2, unit1, LinerOD)
+    
+    # Update Hole Counts (Using NXOpen.Unit.Null for unitless)
+    expression3 = workPart.Expressions.FindObject("numD")
+    workPart.Expressions.EditExpressionWithUnits(expression3, NXOpen.Unit.Null, NumDil)
+    
+    expression4 = workPart.Expressions.FindObject("numP")
+    workPart.Expressions.EditExpressionWithUnits(expression4, NXOpen.Unit.Null, NumPrim)
+    
+    expression5 = workPart.Expressions.FindObject("numS")
+    workPart.Expressions.EditExpressionWithUnits(expression5, NXOpen.Unit.Null, NumSec)
+    
+    # Update Length
+    expression6 = workPart.Expressions.FindObject("Length")
+    workPart.Expressions.EditExpressionWithUnits(expression6, unit1, Length)
+    
+    # Update Dilution Dia
+    expression7 = workPart.Expressions.FindObject("DDia")
+    workPart.Expressions.EditExpressionWithUnits(expression7, unit1, DilDia)
+    
+    # Update Annulus Gap
+    expression8 = workPart.Expressions.FindObject("AnnulusGap")
+    workPart.Expressions.EditExpressionWithUnits(expression8, unit1, AnnulusGap)
+    
+    # Update Model
+    markId12 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Invisible, "Make Up to Date")
+    objects1 = [expression5, expression3, expression6, expression8, expression4, expression7, expression2, expression1]
+    theSession.UpdateManager.MakeUpToDate(objects1, markId12)
+    
+    markId13 = theSession.SetUndoMark(NXOpen.Session.MarkVisibility.Invisible, "NX update")
+    theSession.UpdateManager.DoUpdate(markId13)
+    theSession.DeleteUndoMark(markId13, "NX update")
+
+if __name__ == '__main__':
+    main()
+"""
+    filename = "AutoPy_CC_Demo.py"
+    with open(filename, "w") as f:
+        f.write(script_content)
 #--#--#_#_#
 #############
 user_inputs = {
@@ -204,6 +276,7 @@ user_inputs = {
     'compressor_efficiency': 0.94,
     'mass_flow_air_kg_s': .487, # set none for autoscale
     'target_tit_k': 900.0} # max temp for steel (accounting for F.S.)
+
 kj66_inputs = {
     'casing_od_inch': 4.33, #110mm
     'wall_thickness_mm': 0.5,
@@ -212,13 +285,11 @@ kj66_inputs = {
     'mass_flow_air_kg_s': 0.23, #.22-.24
     'target_tit_k': 1123.0 #K
 }
-#user_inputs=kj66_inputs
-#def compare_kj66()
 
 if __name__ == "__main__":
-    print("-"*60)
-    print("-"*60)
-    print("-"*60)
+    print("-" * 60)
+    print("-" * 60)
+    print("-" * 60)
     KEYS = ['casing_od_inch', 'wall_thickness_mm', 'pressure_ratio',
             'compressor_efficiency', 'mass_flow_air_kg_s', 'target_tit_k']
 
@@ -251,11 +322,17 @@ if __name__ == "__main__":
 
     model = MicroJetCombustor(chosen_inputs)
     results = model.run()
+    
+    # Print the report to the console
     print_report(results, chosen_inputs)
+    
+    # Generate the CAD integration script
+    generate_nx_journal(results)
+    
     print()
-    CL=False
-    while CL==False:
-        close=input("Pressing X, Q, 5, or just Enter to close this window, results will not be saved: ")
-        close_list=["x","X","Q","q","5",""]
+    CL = False
+    while CL == False:
+        close = input("Pressing X, Q, 5, or just Enter to close this window: ")
+        close_list = ["x", "X", "Q", "q", "5", ""]
         if close in close_list:
             break

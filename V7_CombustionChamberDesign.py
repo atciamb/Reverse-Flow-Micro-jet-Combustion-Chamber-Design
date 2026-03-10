@@ -935,7 +935,6 @@ class MicroJetCombustor:
         self.temperature_traverse_quality()
         self.res['cad_geometry'] = self.get_cad_geometry()
         return self.res
-        return self.res
 
 def print_report(res, inputs):
     W = 65

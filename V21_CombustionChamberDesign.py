@@ -1523,8 +1523,9 @@ def print_report(res, inputs):
     print("  • Igniter plug: outer liner, primary zone, midway between vaporizers")
     print("=" * W)
     header("[10a] COMBUSTOR EXIT CONDITIONS  (turbine inlet)")
+    
     row("Exit static pressure P4",      f"{res['exit_P4_kPa']:.2f}",   "kPa",
-        f"P2 × (1 − {res['exit_P4_Pa']/res['P2_Pa']*100:.0f}% ΔP)")
+        f"P2 × (1 − {(1 - res['exit_P4_Pa']/res['P2_Pa'])*100:.0f}% ΔP)")
     row("Exit static temperature T4",   f"{res['exit_T4_K']:.0f}",     "K",
         "= target TIT (design point)")
     row("Exit total temperature T04",   f"{res['exit_T4_total_K']:.1f}","K")

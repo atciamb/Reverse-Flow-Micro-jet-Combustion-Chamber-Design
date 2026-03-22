@@ -694,6 +694,54 @@ class MicroJetCombustor:
         # This aligns with the fixed 0.96 used in mass_flow_and_fuel (CLP≈15 → η=0.97)
         eta_comb_estimated = max(0.85, min(0.999, 1.0 - 0.006 * max(0.0, CLP - 10.0)))
         self.res['eta_comb_estimated'] = round(eta_comb_estimated, 3)
+    def exit_conditions(self):
+        """
+        1-D turbine inlet (combustor exit) conditions.
+        Uses γ=1.33 for hot combustion products instead of the cold-air 1.4
+        used elsewhere in the code — matters for Mach and isentropic relations.
+        P4 is derived from the liner ΔP design target (not independently verified).
+        """
+        GAMMA_HOT = 1.33          # combustion products at ~900–1200 K
+        R         = self.R        # 287.05 J/kg·K — close enough for lean products
+
+        P2        = self.res['P2_Pa']
+        T4        = self.inputs['target_tit_k']
+        dP_frac   = self.DESIGN_PARAMS['target_pressure_drop']
+        P4        = P2 * (1.0 - dP_frac)
+
+        mdot_exit = self.res['mdot_air'] + self.res['mdot_fuel']
+        A_exit    = self.res['combustion_annulus_A']
+        cp4       = self._get_cp(T4)
+
+        rho4  = P4 / (R * T4)
+        V4    = mdot_exit / (rho4 * A_exit)
+        a4    = math.sqrt(GAMMA_HOT * R * T4)
+        Ma4   = V4 / a4
+
+        # Isentropic total conditions (stagnation)
+        factor        = 1.0 + (GAMMA_HOT - 1.0) / 2.0 * Ma4 ** 2
+        T4_total      = T4 * factor
+        P4_total      = P4 * factor ** (GAMMA_HOT / (GAMMA_HOT - 1.0))
+
+        # Specific enthalpy available to the turbine (total enthalpy drop to ambient)
+        T_amb    = 288.15
+        cp_mean  = self._get_cp((T4 + T_amb) / 2.0)
+        h_avail  = cp_mean * (T4_total - T_amb)   # J/kg — upper bound on turbine work
+
+        self.res['exit_P4_Pa']       = P4
+        self.res['exit_P4_kPa']      = P4 / 1000.0
+        self.res['exit_T4_K']        = T4
+        self.res['exit_rho4']        = rho4
+        self.res['exit_V4_m_s']      = V4
+        self.res['exit_Ma4']         = Ma4
+        self.res['exit_a4_m_s']      = a4
+        self.res['exit_T4_total_K']  = T4_total
+        self.res['exit_P4_total_Pa'] = P4_total
+        self.res['exit_mdot_kg_s']   = mdot_exit
+        self.res['exit_cp4']         = cp4
+        self.res['exit_h_avail_kJ_kg'] = h_avail / 1000.0
+        self.res['exit_gamma_hot']   = GAMMA_HOT
+        self.res['exit_Ma4_high']    = Ma4 > 0.25   # flag: compressibility matters above ~0.25
 
     def hole_sizing(self):
         dP   = self.res['P2_Pa'] * self.DESIGN_PARAMS['target_pressure_drop']
@@ -1126,6 +1174,7 @@ class MicroJetCombustor:
         self.liner_structural()
         self.temperature_traverse_quality()
         self.combustion_loading()
+        self.exit_conditions()
         self.stability_checks()
         self.res['cad_geometry'] = self.get_cad_geometry()
         return self.res
@@ -1473,8 +1522,34 @@ def print_report(res, inputs):
     print("  • Film cooling rows: first row immediately after primary holes; stagger 30°")
     print("  • Igniter plug: outer liner, primary zone, midway between vaporizers")
     print("=" * W)
-
-    header("[10] STABILITY CHECKS  (Recirculation · Flashback · Dome Heat)")
+    header("[10a] COMBUSTOR EXIT CONDITIONS  (turbine inlet)")
+    row("Exit static pressure P4",      f"{res['exit_P4_kPa']:.2f}",   "kPa",
+        f"P2 × (1 − {res['exit_P4_Pa']/res['P2_Pa']*100:.0f}% ΔP)")
+    row("Exit static temperature T4",   f"{res['exit_T4_K']:.0f}",     "K",
+        "= target TIT (design point)")
+    row("Exit total temperature T04",   f"{res['exit_T4_total_K']:.1f}","K")
+    row("Exit total pressure P04",      f"{res['exit_P4_total_Pa']/1000:.2f}", "kPa")
+    row("Exit gas density ρ4",          f"{res['exit_rho4']:.4f}",      "kg/m³")
+    row("Exit mass flow (air + fuel)",  f"{res['exit_mdot_kg_s']:.4f}", "kg/s")
+    row("Exit bulk velocity V4",        f"{res['exit_V4_m_s']:.1f}",    "m/s")
+    row("Speed of sound a4",            f"{res['exit_a4_m_s']:.1f}",    "m/s",
+        f"γ = {res['exit_gamma_hot']} (hot products)")
+    row("Exit Mach number Ma4",         f"{res['exit_Ma4']:.4f}",       "")
+    row("Cp at T4",                     f"{res['exit_cp4']:.1f}",       "J/kg·K")
+    row("Specific enthalpy available",  f"{res['exit_h_avail_kJ_kg']:.1f}", "kJ/kg",
+        "total enthalpy drop T04 → T_amb")
+    flag(res['exit_Ma4_high'],
+        f"Ma4 = {res['exit_Ma4']:.3f} > 0.25 — compressibility non-negligible. "
+        "Isentropic stagnation values above are valid; static values are meaningfully "
+        "lower than total. Feed total conditions (T04, P04) to turbine design.")
+    flag(res['exit_Ma4'] > 0.50,
+        f"Ma4 = {res['exit_Ma4']:.3f} — EXIT IS TRANSONIC-APPROACHING. "
+        "Combustion annulus area may be too small for this mass flow and TIT.")
+    print()
+    print("  NOTE: P4 derived from design-target ΔP, not independently verified.")
+    print(f"  γ = {res['exit_gamma_hot']} used here vs 1.4 used elsewhere in code.")
+    print("  For turbine design use total conditions (T04, P04) — not static.")
+    header("[10b] STABILITY CHECKS  (Recirculation · Flashback · Dome Heat)")
     print("  These checks flag fluid-dynamic failure modes invisible to static geometry sizing.")
     print("  A 1-D tool cannot guarantee stability — use as go/no-go screening only.")
     print()
@@ -1584,9 +1659,6 @@ def print_report(res, inputs):
     print()
 
 
-# ==============================================================================
-# PRESET CONFIGURATIONS
-# ==============================================================================
 user_inputs_6in = {
     'casing_od_inch':        6.00,
     'shaft_tunnel_od_inch':  1.65,
@@ -1595,7 +1667,7 @@ user_inputs_6in = {
     'compressor_efficiency': 0.94,
     'mass_flow_air_kg_s':    0.487,
     'target_tit_k':          900.0,
-    'liner_material':       '304SS',
+    'liner_material':       '316SS',
 }
 
 kj66_inputs = {
@@ -1628,10 +1700,8 @@ KEYS = [
 ]
 
 if __name__ == "__main__":
-    print("─" * 65)
+    print()
     print("  REVERSE-FLOW ANNULAR COMBUSTOR DESIGN TOOL")
-    print("  KJ66-style Micro-Jet  |  Rev 21")
-    print("─" * 65)
     print()
     print("  Presets available:")
     print("    1 — 6\" custom engine  (PR 1.5,  0.487 kg/s,  TIT 900 K)")

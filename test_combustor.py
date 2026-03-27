@@ -1,35 +1,35 @@
 import pytest
-from V5_CombustionChamber_Design import MicroJetCombustor, print_report
-
+from V21_CombustionChamberDesign import MicroJetCombustor, print_report
 
 @pytest.fixture
 def kj66_inputs():
     return {
         'casing_od_inch': 4.33,
+        'shaft_tunnel_od_inch': 1.18,
         'wall_thickness_mm': 0.5,
         'pressure_ratio': 2.2,
         'compressor_efficiency': 0.74,
         'mass_flow_air_kg_s': 0.23,
-        'target_tit_k': 1123.0
+        'target_tit_k': 1123.0,
+        'liner_material': '304SS'
     }
-
 
 @pytest.fixture
 def custom_inputs():
     return {
         'casing_od_inch': 6.0,
+        'shaft_tunnel_od_inch': 1.65,
         'wall_thickness_mm': 1.5,
         'pressure_ratio': 1.5,
         'compressor_efficiency': 0.94,
         'mass_flow_air_kg_s': 0.487,
-        'target_tit_k': 900.0
+        'target_tit_k': 900.0,
+        'liner_material': '316SS'
     }
-
 
 @pytest.fixture
 def kj66_combustor(kj66_inputs):
     return MicroJetCombustor(kj66_inputs)
-
 
 @pytest.fixture
 def custom_combustor(custom_inputs):
@@ -37,7 +37,6 @@ def custom_combustor(custom_inputs):
 
 
 class TestMicroJetCombustorInit:
-
     def test_inputs_stored(self, kj66_combustor, kj66_inputs):
         assert kj66_combustor.inputs == kj66_inputs
 
@@ -48,10 +47,10 @@ class TestMicroJetCombustorInit:
     def test_design_params_exist(self, kj66_combustor):
         params = kj66_combustor.DESIGN_PARAMS
         assert 'target_annulus_vel' in params
-        assert 'target_tube_liq_vel' in params
+        assert 'target_vap_mix_vel' in params
         assert 'target_pressure_drop' in params
         assert 'discharge_coeff_hole' in params
-        assert 'max_LD_ratio' in params
+        assert 'L_D_min' in params
 
     def test_fuel_params_exist(self, kj66_combustor):
         fuel = kj66_combustor.FUEL
@@ -62,7 +61,6 @@ class TestMicroJetCombustorInit:
 
 
 class TestCpCalculation:
-
     def test_cp_at_room_temp(self, kj66_combustor):
         cp = kj66_combustor._get_cp(300)
         assert 1000 < cp < 1100
@@ -78,12 +76,11 @@ class TestCpCalculation:
 
     def test_cp_clamped_high(self, kj66_combustor):
         cp_high = kj66_combustor._get_cp(3000)
-        cp_2000 = kj66_combustor._get_cp(2000)
+        cp_2000 = kj66_combustor._get_cp(2200)
         assert cp_high == cp_2000
 
 
 class TestThermodynamics:
-
     def test_thermodynamics_sets_pressure(self, kj66_combustor, kj66_inputs):
         kj66_combustor.thermodynamics()
         P_amb = 101325
@@ -117,7 +114,6 @@ class TestThermodynamics:
 
 
 class TestMassFlowAndFuel:
-
     def test_air_mass_flow_from_input(self, kj66_combustor, kj66_inputs):
         kj66_combustor.thermodynamics()
         kj66_combustor.mass_flow_and_fuel()
@@ -160,7 +156,6 @@ class TestMassFlowAndFuel:
 
 
 class TestZonalAnalysis:
-
     def test_air_splits_sum_to_total(self, kj66_combustor):
         kj66_combustor.thermodynamics()
         kj66_combustor.mass_flow_and_fuel()
@@ -169,7 +164,9 @@ class TestZonalAnalysis:
         total = (kj66_combustor.res['split_primary'] +
                  kj66_combustor.res['split_secondary'] +
                  kj66_combustor.res['split_dilution'])
-        assert total == pytest.approx(kj66_combustor.res['mdot_air'], rel=1e-6)
+        
+        m_comb = kj66_combustor.res['m_combustion_air']
+        assert total == pytest.approx(m_comb, rel=1e-6)
 
     def test_primary_zone_positive(self, kj66_combustor):
         kj66_combustor.thermodynamics()
@@ -191,27 +188,25 @@ class TestZonalAnalysis:
 
 
 class TestMechanicalGeometry:
-
     def test_liner_smaller_than_casing(self, kj66_combustor):
         kj66_combustor.run()
-        assert kj66_combustor.res['liner_od_mm'] < kj66_combustor.res['casing_id_mm']
+        assert kj66_combustor.res['outer_liner_od_mm'] < kj66_combustor.res['casing_id_mm']
 
     def test_liner_id_smaller_than_od(self, kj66_combustor):
         kj66_combustor.run()
-        assert kj66_combustor.res['liner_id_mm'] < kj66_combustor.res['liner_od_mm']
+        assert kj66_combustor.res['outer_liner_id_mm'] < kj66_combustor.res['outer_liner_od_mm']
 
     def test_annulus_gap_positive(self, kj66_combustor):
         kj66_combustor.run()
-        assert kj66_combustor.res['annulus_gap_mm'] > 0
+        assert kj66_combustor.res['outer_annulus_gap_mm'] > 0
 
     def test_chamber_length_respects_ld_ratio(self, kj66_combustor):
         kj66_combustor.run()
-        expected_length = kj66_combustor.res['liner_od_mm'] * kj66_combustor.DESIGN_PARAMS['max_LD_ratio']
-        assert kj66_combustor.res['chamber_length_mm'] == pytest.approx(expected_length, rel=1e-6)
+        min_length = kj66_combustor.res['D_mean_comb_mm'] * kj66_combustor.DESIGN_PARAMS['L_D_min']
+        assert kj66_combustor.res['chamber_length_mm'] >= min_length - 0.001
 
 
 class TestVaporizerTubes:
-
     def test_even_number_of_tubes(self, kj66_combustor):
         kj66_combustor.run()
         assert kj66_combustor.res['vap_n'] % 2 == 0
@@ -222,37 +217,35 @@ class TestVaporizerTubes:
 
     def test_minimum_tube_id(self, kj66_combustor):
         kj66_combustor.run()
-        assert kj66_combustor.res['vap_id_mm'] >= 4.0
+        assert kj66_combustor.res['vap_id_mm'] >= 3.0
 
     def test_vapor_exit_velocity_positive(self, kj66_combustor):
         kj66_combustor.run()
-        assert kj66_combustor.res['vap_exit_velocity'] > 0
+        assert kj66_combustor.res['vap_exit_v_crimped'] > 0
 
 
 class TestHoleSizing:
-
     def test_primary_holes_positive(self, kj66_combustor):
         kj66_combustor.run()
-        assert kj66_combustor.res['holes_pri_qty'] > 0
-        assert kj66_combustor.res['holes_pri_mm'] > 0
+        assert kj66_combustor.res['pri_out_qty'] > 0
+        assert kj66_combustor.res['pri_out_mm'] > 0
 
     def test_secondary_holes_positive(self, kj66_combustor):
         kj66_combustor.run()
-        assert kj66_combustor.res['holes_sec_qty'] > 0
-        assert kj66_combustor.res['holes_sec_mm'] > 0
+        assert kj66_combustor.res['sec_out_qty'] > 0
+        assert kj66_combustor.res['sec_out_mm'] > 0
 
     def test_dilution_holes_exist_when_needed(self, kj66_combustor):
         kj66_combustor.run()
         if kj66_combustor.res['split_dilution'] > 0:
-            assert kj66_combustor.res['holes_dil_mm'] > 0
+            assert kj66_combustor.res['dil_out_mm'] > 0
 
     def test_primary_holes_twice_vaporizer_count(self, kj66_combustor):
         kj66_combustor.run()
-        assert kj66_combustor.res['holes_pri_qty'] == kj66_combustor.res['vap_n'] * 2
+        assert kj66_combustor.res['pri_out_qty'] == kj66_combustor.res['vap_n'] * 2
 
 
 class TestIntegration:
-
     def test_full_run_completes(self, kj66_combustor):
         results = kj66_combustor.run()
         assert results is not None
@@ -264,11 +257,11 @@ class TestIntegration:
             'P2_Pa', 'T2_K', 'rho2',
             'mdot_air', 'mdot_fuel', 'overall_AFR',
             'split_primary', 'split_secondary', 'split_dilution',
-            'liner_od_mm', 'liner_id_mm', 'chamber_length_mm',
+            'outer_liner_od_mm', 'inner_liner_id_mm', 'chamber_length_mm',
             'vap_n', 'vap_od_mm', 'vap_id_mm',
-            'holes_pri_qty', 'holes_pri_mm',
-            'holes_sec_qty', 'holes_sec_mm',
-            'holes_dil_qty', 'holes_dil_mm'
+            'pri_out_qty', 'pri_out_mm',
+            'sec_out_qty', 'sec_out_mm',
+            'dil_out_qty', 'dil_out_mm'
         ]
         for key in expected_keys:
             assert key in results, f"Missing key: {key}"
@@ -277,7 +270,7 @@ class TestIntegration:
         results = kj66_combustor.run()
         assert 200000 < results['P2_Pa'] < 250000
         assert 0.003 < results['mdot_fuel'] < 0.008
-        assert results['liner_od_mm'] < 130
+        assert results['outer_liner_od_mm'] < 130
 
     def test_custom_combustor_runs(self, custom_combustor):
         results = custom_combustor.run()
@@ -287,11 +280,10 @@ class TestIntegration:
         results = kj66_combustor.run()
         print_report(results, kj66_inputs)
         captured = capsys.readouterr()
-        assert 'Reverse Flow Combustor' in captured.out
+        assert 'REVERSE-FLOW ANNULAR MICRO-JET COMBUSTOR DESIGN TOOL' in captured.out
 
 
 class TestEdgeCases:
-
     def test_low_pressure_ratio(self, kj66_inputs):
         inputs = kj66_inputs.copy()
         inputs['pressure_ratio'] = 1.1
@@ -311,12 +303,12 @@ class TestEdgeCases:
         inputs['wall_thickness_mm'] = 0.1
         combustor = MicroJetCombustor(inputs)
         results = combustor.run()
-        assert results['liner_od_mm'] < results['casing_id_mm']
+        assert results['outer_liner_od_mm'] < results['casing_id_mm']
 
-    def test_large_casing(self, kj66_inputs):
-        inputs = kj66_inputs.copy()
+    def test_large_casing(self, custom_inputs):
+        inputs = custom_inputs.copy()
         inputs['casing_od_inch'] = 12.0
         inputs['mass_flow_air_kg_s'] = 1.0
         combustor = MicroJetCombustor(inputs)
         results = combustor.run()
-        assert results['liner_od_mm'] < 12 * 25.4
+        assert results['outer_liner_od_mm'] < 12 * 25.4

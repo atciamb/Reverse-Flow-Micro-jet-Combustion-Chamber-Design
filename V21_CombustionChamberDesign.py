@@ -1213,24 +1213,6 @@ def print_report(res, inputs):
     st_mm  = res['shaft_tunnel_od_mm']
     scale  = oc_mm / 30.0
 
-    def bar(od, id_=None):
-        half_chars = int(round(oc_mm / 2 / scale))
-        r_od = int(round((od / 2) / scale))
-        r_id = int(round((id_ / 2) / scale)) if id_ is not None else 0
-        line = " " * (half_chars - r_od) + "│" + "█" * (r_od - r_id) + " " * (r_id * 2) + "█" * (r_od - r_id) + "│"
-        return line
-
-    print()
-    print("  RADIAL CROSS-SECTION (schematic):")
-    print(f"  OD={oc_mm:.1f}mm  OL={ol_mm:.1f}mm  IL={il_mm:.1f}mm  ST={st_mm:.1f}mm")
-    print()
-    print("  " + "·" * 32 + " ← OUTER CASING")
-    print("  " + bar(oc_mm, ol_mm) + " ← OUTER ANNULUS (feed air)")
-    print("  " + bar(ol_mm, il_mm) + " ← COMBUSTION ANNULUS")
-    print("  " + bar(il_mm, st_mm) + " ← INNER ANNULUS  (feed air)")
-    print("  " + bar(st_mm) +        " ← SHAFT TUNNEL")
-    print()
-
     header("[1] THERMODYNAMICS")
     row("Inlet Total Pressure P2", f"{res['P2_Pa']/1000:.1f}", "kPa")
     row("Inlet Total Temperature T2", f"{res['T2_K']:.0f}", "K")

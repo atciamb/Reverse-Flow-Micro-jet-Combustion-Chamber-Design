@@ -1666,7 +1666,7 @@ user_inputs_6in = {
     'wall_thickness_mm':     1.50,
     'pressure_ratio':        1.50,
     'compressor_efficiency': 0.94,
-    'mass_flow_air_kg_s':    0.487,
+    'mass_flow_air_kg_s':    0.6, # from .487
     'target_tit_k':          900.0,
     'liner_material':       '316SS',
 }
@@ -1705,7 +1705,7 @@ if __name__ == "__main__":
     print("  REVERSE-FLOW ANNULAR COMBUSTOR DESIGN TOOL")
     print()
     print("  Presets available:")
-    print("    1 — 6\" custom engine  (PR 1.5,  0.487 kg/s,  TIT 900 K)")
+    print("    1 — 6\" custom engine  (PR 1.5,  0.6 kg/s,  TIT 900 K)")
     print("    2 — KJ66 reference    (PR 2.2,  0.230 kg/s, TIT 1123 K)")
     print("    3 — Manual input")
     print()

@@ -44,7 +44,7 @@ jobs:
           pip install pyinstaller
 
       - name: Build executable
-        run: pyinstaller --onefile --name CombustionChamberDesign V5_CombustionChamber_Design.py
+        run: pyinstaller --onefile --name CombustionChamberDesign V21_CombustionChamber_Design.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

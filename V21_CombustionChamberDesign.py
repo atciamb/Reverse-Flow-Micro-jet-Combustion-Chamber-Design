@@ -1734,8 +1734,6 @@ if __name__ == "__main__":
         if close in ("", "x", "q", "5"):
             break
 
-
-
 #  AIR FLOW PATH (Reverse-Flow):
 #   Compressor exit → splits into OUTER and INNER annuli →
 #   travels REARWARD alongside combustion zone →

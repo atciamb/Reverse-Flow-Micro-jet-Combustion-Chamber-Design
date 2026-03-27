@@ -1,23 +1,4 @@
 import math
-#  AIR FLOW PATH (Reverse-Flow):
-#   Compressor exit → splits into OUTER and INNER annuli →
-#   travels REARWARD alongside combustion zone →
-#   enters combustion annulus via liner holes (primary, secondary, dilution) →
-#   vaporizer tubes at rear dome inject fuel FORWARD (counter-flow) →
-#   combustion products flow FORWARD toward turbine inlet
-#
-#  HOLE SPLIT METHODOLOGY (Lefebvre, Gas Turbine Combustion 3rd Ed.):
-#   Total required hole area for each zone is split proportionally to
-#   the circumference of the respective liner wall. Because the outer
-#   liner has a larger circumference, it receives a greater share.
-#   Split fraction = C_outer / (C_outer + C_inner) for outer liner
-#   This ensures approximately equal jet momentum flux from both walls,
-#   targeting jet penetration to the mid-height of the combustion annulus.
-#
-#  JET PENETRATION (Sturgess / Lefebvre correlation):
-#   y_max / H = 1.15 * (J)^0.5 * (d_j / H)
-#   where J = momentum flux ratio = (rho_j * V_j^2) / (rho_g * V_g^2)
-#   Target: y_max / H ≈ 0.5  (jet reaches combustion annulus midplane)
 
 class MicroJetCombustor:
     def __init__(self, inputs):
@@ -1555,7 +1536,6 @@ def print_report(res, inputs):
     print("  A 1-D tool cannot guarantee stability — use as go/no-go screening only.")
     print()
 
-    # --- Primary Jet Recirculation ---
     print("  CHECK 1 — Primary Jet Recirculation Strength:")
     row("  J_primary  (ρ_jet·Vjet² / ρ_hot·Vax²)", f"{res['stab_J_primary']:.1f}", "",
         "target: 5–80")
@@ -1753,3 +1733,25 @@ if __name__ == "__main__":
         close = input("  Press Enter, X, or Q to exit: ").strip().lower()
         if close in ("", "x", "q", "5"):
             break
+
+
+
+#  AIR FLOW PATH (Reverse-Flow):
+#   Compressor exit → splits into OUTER and INNER annuli →
+#   travels REARWARD alongside combustion zone →
+#   enters combustion annulus via liner holes (primary, secondary, dilution) →
+#   vaporizer tubes at rear dome inject fuel FORWARD (counter-flow) →
+#   combustion products flow FORWARD toward turbine inlet
+#
+#  HOLE SPLIT METHODOLOGY (Lefebvre, Gas Turbine Combustion 3rd Ed.):
+#   Total required hole area for each zone is split proportionally to
+#   the circumference of the respective liner wall. Because the outer
+#   liner has a larger circumference, it receives a greater share.
+#   Split fraction = C_outer / (C_outer + C_inner) for outer liner
+#   This ensures approximately equal jet momentum flux from both walls,
+#   targeting jet penetration to the mid-height of the combustion annulus.
+#
+#  JET PENETRATION (Sturgess / Lefebvre correlation):
+#   y_max / H = 1.15 * (J)^0.5 * (d_j / H)
+#   where J = momentum flux ratio = (rho_j * V_j^2) / (rho_g * V_g^2)
+#   Target: y_max / H ≈ 0.5  (jet reaches combustion annulus midplane)

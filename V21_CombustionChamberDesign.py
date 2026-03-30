@@ -1620,13 +1620,18 @@ def print_report(res, inputs):
     cad = res['cad_geometry']
     print(json.dumps(cad, indent=2))
     print()
-
+# MATERIALS = { #melting points in K
+#             '304SS':  {'T_m': 1270+273, 'name': '304 Stainless Steel'},
+#             '316SS':  {'T_m': 1350+273, 'name': '316 Stainless Steel'},
+#             'IN625':  {'T_m': 1400+273, 'name': 'Inconel 625'},
+#             'IN718':  {'T_m': 1400+273, 'name': 'Inconel 718'},
+#         }
 
 user_inputs_6in = {
     'casing_od_inch':        6.00,
     'shaft_tunnel_od_inch':  1.65,
     'wall_thickness_mm':     1.50,
-    'pressure_ratio':        1.50,
+    'pressure_ratio':        2.0, #previously 1.5
     'compressor_efficiency': 0.94,
     'mass_flow_air_kg_s':    0.6, # from .487
     'target_tit_k':          900.0,
